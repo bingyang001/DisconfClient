@@ -1,0 +1,408 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Security.Policy;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web;
+using log4net.Config;
+using Ymatou.Log;
+
+namespace Ymatou.CommonService
+{
+    public class ApplicationLog
+	{
+        private static readonly log4net.ILog AppLog = log4net.LogManager.GetLogger("APPLogger");
+
+        private ApplicationLog()
+        {
+        }
+
+        static ApplicationLog()
+        {
+            //log4net.Config.XmlConfigurator.Configure();
+
+            //AppLog = new Log(LogManager.GetLogger("ApplicationLog"));
+
+            //log4net配置
+            //XmlConfigurator.Configure();
+
+            Info("************Logging Restart************");
+
+            BindInternal();
+        }
+
+        #region 对外公共方法
+
+        /// <summary>
+        /// 记录运行信息
+        /// </summary>
+        /// <param name="message"></param>
+        public static void Info(string message)
+        {
+            AppLog.Info(message);
+        }
+
+        /// <summary>
+        /// 记录调试信息
+        /// </summary>
+        /// <param name="message"></param>
+        public static void Debug(string message)
+        {
+            AppLog.Debug(message);
+        }
+
+        /// <summary>
+        /// 致命错误
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="ex"></param>
+        public static void Fatal(string message, Exception ex = null)
+        {
+            var title = message;
+            if (ex != null)
+            {
+                message = ErrorLog.Process(message, ex);
+            }
+
+            AppLog.FatalFormat(message);
+
+            AddErrLogToLocalPool(title, AppErrorLevel.Fatal, ex);
+        }
+
+        public static void Error(string message)
+        {
+            Error(message, null);
+        }
+
+        /// <summary>
+        /// 记录错误
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="ex"></param>
+        public static void Error(string message, Exception ex)
+        {
+            var title = message;
+            if (ex != null)
+            {
+                message = ErrorLog.Process(message, ex);
+            }
+
+            AppLog.Error(message);
+
+            AddErrLogToLocalPool(title, AppErrorLevel.Error, ex);
+        }
+
+        public static void Warn(string message)
+        {
+            Warn(message, null);
+        }
+
+        /// <summary>
+        /// 记录warning信息
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="ex"></param>
+        public static void Warn(string message, Exception ex)
+        {
+            if (ex != null)
+            {
+                message = ErrorLog.Process(message, ex);
+            }
+
+            AppLog.Warn(message);
+
+            AddErrLogToLocalPool(message, AppErrorLevel.Warning, ex);
+        }
+        
+        /// <summary>
+        /// 直接发送异常
+        /// </summary>
+        /// <param name="errinfo">错误信息体</param>
+        public static void SendException(AppErrLogInfo errinfo)
+        {
+            //new Task(() =>
+            //{
+                SendExceptionToServer(new List<AppErrLogInfo>() { errinfo });
+            //}).Start();
+        }
+
+        #endregion
+
+        #region 上传错误日志
+
+        private static List<AppErrLogInfo> _apperrLogInfos;
+        private const string AlarmCenterhostconfigname = "AlarmCenterHost";
+        private const string AlarmAppIdconfigname = "AppId";
+        private static int _maxLogCount = ConfigurationManager.AppSettings["AlarmMaxLogCount"] != null ? Convert.ToInt32(ConfigurationManager.AppSettings["AlarmMaxLogCount"]) : 10000;
+        private static int _maxParallelCount = ConfigurationManager.AppSettings["AlarmMaxParallelCount"] != null ? Convert.ToInt32(ConfigurationManager.AppSettings["AlarmMaxParallelCount"]) : 2;
+        private static int _timeinterval = ConfigurationManager.AppSettings["AlarmTimeInterval"] != null ? Convert.ToInt32(ConfigurationManager.AppSettings["AlarmTimeInterval"]) : 10000;
+        /// <summary>
+        /// 绑定定期同步
+        /// </summary>
+        private static void BindInternal()
+        {
+            if (!IsSendToAlarmServer())
+                return;
+
+            _apperrLogInfos = new List<AppErrLogInfo>();
+
+            try
+            {
+                _apperrLogInfos.Add(new AppErrLogInfo()
+                {
+                    AddTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    AppId = ConfigurationManager.AppSettings[AlarmAppIdconfigname],
+                    ErrorLevel = AppErrorLevel.Warning,
+                    MethodName = "",
+                    AssemblyName = "",
+                    ReqForm = "",
+                    StackTrace = "",
+                    ReqUrl = "",
+                    Title = ConfigurationManager.AppSettings[AlarmAppIdconfigname] + " " + Utility.LocalIPAddress() + " 开启错误日志上传",
+                    Message = "",
+                    ExceptionName = "",
+                    Header = "",
+                    MachineIp = Utility.LocalIPAddress()
+                });
+                SendExceptionToServer(_apperrLogInfos);
+                _apperrLogInfos = new List<AppErrLogInfo>();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("开启错误日志上传错误：" + ex.Message);
+            }
+
+            //new Task(() =>
+            //{
+            //计时器，5秒种触发一次Elapsed事件
+            var timer = new System.Timers.Timer();
+
+            timer.Interval = _timeinterval;
+
+            //告诉ASP.NET接下来将进行一个异步操作
+            //订阅计时器的Elapsed事件
+            timer.Elapsed += (sender, e) =>
+            {
+                //if (!_isUploadingLog)
+                //{
+
+                if (_apperrLogInfos.Count > 0)
+                {
+                    try
+                    {
+                        AppErrLogInfo[] apperrloginfocopy;
+
+                        lock (_apperrLogInfos)
+                        {
+                            apperrloginfocopy = new AppErrLogInfo[_apperrLogInfos.Count];
+                            _apperrLogInfos.CopyTo(apperrloginfocopy);
+                            _apperrLogInfos = new List<AppErrLogInfo>();
+                        }
+
+                        AppLog.Info("上传错误日志：" + apperrloginfocopy.Count() + "个日志");
+                        if (apperrloginfocopy.Any())
+                        {
+                            SendExceptionToServer(apperrloginfocopy.ToList());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("上传" + ex.Message);
+                    }
+                }
+               
+                //}
+            };
+            //启动计时器
+            timer.Start();
+            //}).Start();
+
+        }
+
+        /// <summary>
+        /// 把错误日志放入本地池
+        /// </summary>
+        /// <param name="title"></param>
+        /// <param name="errlevel"></param>
+        /// <param name="ex"></param>
+        private static void AddErrLogToLocalPool(string title, AppErrorLevel errlevel, Exception ex)
+        {
+            if (!IsSendToAlarmServer())
+                return;
+
+            //new Task(() =>
+            //{
+
+            try
+            {
+
+                lock (_apperrLogInfos)
+                {
+                    if (_apperrLogInfos.Count >= _maxLogCount)
+                    {
+                        _apperrLogInfos.RemoveAt(0);
+                    }
+                }
+
+                string form = ErrorLog.GetForm();
+                var url = ErrorLog.GetUrl();
+                var header = ErrorLog.GetHeader();
+
+                var info = new AppErrLogInfo()
+                {
+                    AddTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    AppId = ConfigurationManager.AppSettings[AlarmAppIdconfigname],
+                    ErrorLevel = errlevel,
+                    MethodName = ex != null && ex.TargetSite != null ? ex.TargetSite.ToString() : "",
+                    AssemblyName = ex != null && ex.TargetSite != null && ex.TargetSite.DeclaringType != null ? ex.TargetSite.DeclaringType.Assembly.ToString() : "",
+                    ReqForm = form,
+                    StackTrace = ex != null && ex.StackTrace != null ? ex.StackTrace.Replace("\n", "\n\t") : "",
+                    ReqUrl = url,
+                    Title = title,
+                    Message = ex != null ? ex.Message : "",
+                    ExceptionName = ex != null ? ex.GetType().Name : "",
+                    Header = header,
+                    MachineIp = Utility.LocalIPAddress()
+                };
+                lock (_apperrLogInfos)
+                {
+                    _apperrLogInfos.Add(info);
+                }
+            }
+            catch (Exception ex1)
+            {
+                AppLog.Error("AddErrLogToLocalPool:" + ex1.Message + "----" + (ex != null && ex.StackTrace != null ? ex.StackTrace.Replace("\n", "\n\t") : ""), ex1);
+            }
+
+            //}).Start();
+        }
+        
+        static void SendExceptionToServer(List<AppErrLogInfo> listerr)
+        {
+            new Thread(() =>
+            {
+
+                var listaplit = new List<AppErrLogInfo>();
+
+                for (var i = 0; i < listerr.Count; i++)
+                {
+                    listaplit.Add(listerr[i]);
+
+                    if (i > 0 && i%200 == 0)
+                    {
+                        SendAllExceptionListToServer(listaplit);
+                        listaplit = new List<AppErrLogInfo>();
+                    }
+                }
+
+                SendAllExceptionListToServer(listaplit);
+
+            }).Start();
+
+        }
+
+        static void SendAllExceptionListToServer(List<AppErrLogInfo> listaplit)
+        {
+            if (listaplit == null || listaplit.Count == 0) return;
+
+            try
+            {
+                var dic = new Dictionary<string, string>();
+
+                var strErrJson = JS.Serializer(listaplit);
+
+                dic["Error"] = strErrJson;
+
+                Utility.WebClientPostHttp(AlarmCenterHost + "Alarm/SavePatch", dic, true);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("SendExceptionListToServer", ex);
+            }
+        }
+
+        static void SendExceptionToServer(AppErrLogInfo err)
+        {
+            //new Thread(
+            //    () => Parallel.For(0, listerr.Count, new ParallelOptions()
+            //{
+            //    MaxDegreeOfParallelism = _maxParallelCount
+            //}, i =>
+            //{
+            //    try
+            //    {
+            //        var dic = new Dictionary<string, string>();
+
+            //        dic["AppId"] = ConfigurationManager.AppSettings[AlarmAppIdconfigname];
+            //        dic["ReqUrl"] = listerr[i].ReqUrl;
+            //        dic["ErrorLevel"] = listerr[i].ErrorLevel.ToString();
+            //        dic["MethodName"] = listerr[i].MethodName;
+            //        dic["AssemblyName"] = listerr[i].AssemblyName;
+            //        dic["Title"] = listerr[i].Title;
+            //        dic["Message"] = listerr[i].Message;
+            //        dic["Header"] = listerr[i].Header;
+            //        dic["ReqForm"] = listerr[i].ReqForm;
+            //        dic["StackTrace"] = listerr[i].StackTrace;
+            //        dic["ExceptionName"] = listerr[i].ExceptionName;
+            //        dic["MachineIp"] = Utility.LocalIPAddress();
+            //        dic["AddTime"] = listerr[i].AddTime;
+
+            //        Utility.WebClientPostHttp(AlarmCenterHost + "Alarm/SaveSingle", dic, true);
+
+            //        //var listsplit = new List<AppErrLogInfo>();
+            //        //var strErrJson = "";
+            //        //for (var m = i*10;
+            //        //    m < (i*10 + ((i + 1)*10 <= listerr.Count ? ((i + 1)*10) : (listerr.Count - i*10))) - 1;
+            //        //    m++)
+            //        //{
+            //        //    listsplit.Add(listerr[m]);
+            //        //}
+
+            //        //strErrJson = Newtonsoft.Json.JsonConvert.DeserializeObject<List<AppErrLogInfo>>(log);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        AppLog.Error("SendExceptionToServer:" + ex.Message);
+            //    }
+
+            //})).Start();
+        }
+
+        /// <summary>
+        /// 判断是否需要上传到服务器
+        /// </summary>
+        /// <returns></returns>
+        static bool IsSendToAlarmServer()
+        {
+            return AlarmCenterHost != null
+                && ConfigurationManager.AppSettings[AlarmAppIdconfigname] != null;
+        }
+
+        static string AlarmCenterHost
+        {
+            get
+            {
+                var host = ConfigurationManager.AppSettings[AlarmCenterhostconfigname];
+
+                if (host == null) return null;
+
+                if (host.IndexOf("SaveSingle", System.StringComparison.Ordinal) < 0)
+                {
+                    if (host.EndsWith("/"))
+                    {
+                        return host;
+                    }
+                    return host + "/";
+                }
+
+                host = Regex.Replace(host, "Alarm/SaveSingle", "", RegexOptions.IgnoreCase);
+                return host;
+            }
+        }
+
+        #endregion
+    }
+}

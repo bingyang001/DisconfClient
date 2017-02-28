@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DisconfClient", "DisconfClient\DisconfClient.csproj", "{98FB9CC4-409B-4F59-BDDC-43BDC1A69B39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DisconfClientTest", "DisconfClientTest\DisconfClientTest.csproj", "{8B25C69D-3D15-46B5-A3BF-8A117A423166}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DisconfClient.UnitTest", "DisconfClient.UnitTest\DisconfClient.UnitTest.csproj", "{B11A6A50-2595-4655-A82B-168F9D69EBAA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DisconfClientDemo", "DisconfClientDemo\DisconfClientDemo.csproj", "{82CC2788-6EC4-42AA-9CC5-67314789A072}"
+EndProject
+Global
+	GlobalSection(TeamFoundationVersionControl) = preSolution
+		SccNumberOfProjects = 5
+		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccTeamFoundationServer = http://192.168.1.223:8080/tfs/defaultcollection
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = DisconfClient.UnitTest\\DisconfClient.UnitTest.csproj
+		SccProjectName1 = DisconfClient.UnitTest
+		SccLocalPath1 = DisconfClient.UnitTest
+		SccProjectUniqueName2 = DisconfClient\\DisconfClient.csproj
+		SccProjectName2 = DisconfClient
+		SccLocalPath2 = DisconfClient
+		SccProjectUniqueName3 = DisconfClientTest\\DisconfClientTest.csproj
+		SccProjectName3 = DisconfClientTest
+		SccLocalPath3 = DisconfClientTest
+		SccProjectUniqueName4 = DisconfClientDemo\\DisconfClientDemo.csproj
+		SccProjectName4 = DisconfClientDemo
+		SccLocalPath4 = DisconfClientDemo
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{98FB9CC4-409B-4F59-BDDC-43BDC1A69B39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98FB9CC4-409B-4F59-BDDC-43BDC1A69B39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98FB9CC4-409B-4F59-BDDC-43BDC1A69B39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98FB9CC4-409B-4F59-BDDC-43BDC1A69B39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B25C69D-3D15-46B5-A3BF-8A117A423166}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B25C69D-3D15-46B5-A3BF-8A117A423166}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B25C69D-3D15-46B5-A3BF-8A117A423166}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B25C69D-3D15-46B5-A3BF-8A117A423166}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B11A6A50-2595-4655-A82B-168F9D69EBAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B11A6A50-2595-4655-A82B-168F9D69EBAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B11A6A50-2595-4655-A82B-168F9D69EBAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B11A6A50-2595-4655-A82B-168F9D69EBAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82CC2788-6EC4-42AA-9CC5-67314789A072}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82CC2788-6EC4-42AA-9CC5-67314789A072}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82CC2788-6EC4-42AA-9CC5-67314789A072}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82CC2788-6EC4-42AA-9CC5-67314789A072}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
